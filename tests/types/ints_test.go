@@ -9,7 +9,7 @@ func TestCompareInts(t *testing.T) {
 	var testName string
 	var errs []error
 
-	testName = "42 - 42"
+	testName = `V: 42 - 42`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(42, 42)
 	if len(errs) > 0 {
@@ -18,8 +18,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "42 - 0"
+	testName = `F: 42 - 0`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(42, 0)
 	if len(errs) != 1 {
@@ -28,8 +29,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "42 - &42"
+	testName = `V: 42 - &42`
 	t.Logf("Test %s", testName)
 	v1 := 42
 	errs = compare.Compare(42, &v1)
@@ -39,8 +41,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "&42 - 42"
+	testName = `V: &42 - 42`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(&v1, 42)
 	if len(errs) > 0 {
@@ -49,8 +52,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "0 - &0"
+	testName = `V: 0 - &0`
 	t.Logf("Test %s", testName)
 	v2 := 0
 	errs = compare.Compare(0, v2)
@@ -60,8 +64,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "&0 - 0"
+	testName = `V: &0 - 0`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(v2, 0)
 	if len(errs) > 0 {
@@ -70,8 +75,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "42 - (*int)(nil)"
+	testName = `F: 42 - (*int)(nil)`
 	t.Logf("Test %s", testName)
 	var v3 *int
 	errs = compare.Compare(42, v3)
@@ -81,18 +87,20 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "0 - (*int)(nil)"
+	testName = `V: 0 - (*int)(nil)`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(0, v3)
-	if len(errs) != 1 {
-		t.Errorf("%s: should have one error but got %d", testName, len(errs))
+	if len(errs) > 0 {
+		t.Errorf("%s: should have no error but got %d", testName, len(errs))
 		for _, err := range errs {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "int8(42) - int32(42)"
+	testName = `V: int8(42) - int32(42)`
 	t.Logf("Test %s", testName)
 	v4 := int8(42)
 	v5 := int32(42)
@@ -103,8 +111,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "uint8(42) - int32(42)"
+	testName = `V: uint8(42) - int32(42)`
 	t.Logf("Test %s", testName)
 	v6 := uint8(42)
 	v7 := int32(42)
@@ -115,8 +124,9 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "uint8(42) - int32(-42)"
+	testName = `F: uint8(42) - int32(-42)`
 	t.Logf("Test %s", testName)
 	v8 := uint8(42)
 	v9 := int32(-42)
@@ -127,4 +137,5 @@ func TestCompareInts(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 }

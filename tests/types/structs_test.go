@@ -44,7 +44,7 @@ func TestCompareStructs(t *testing.T) {
 		A interface{}
 	}
 
-	testName = "a{42, 'foo'} - a{42, 'foo'}"
+	testName = `V: a{42, "foo"} - a{42, "foo"}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, a{42, "foo"})
 	if len(errs) > 0 {
@@ -53,8 +53,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "a{42, 'foo'} - a{42, 'bar'}"
+	testName = `F: a{42, "foo"} - a{42, "bar"}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, a{42, "bar"})
 	if len(errs) == 0 {
@@ -63,8 +64,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "a{42, 'foo'} - b{42, 'foo'}"
+	testName = `V: a{42, "foo"} - b{42, "foo"}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, b{42, "foo"})
 	if len(errs) != 0 {
@@ -73,8 +75,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "a{42, 'foo'} - b{42, 'bar'}"
+	testName = `F: a{42, "foo"} - b{42, "bar"}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, b{42, "bar"})
 	if len(errs) == 0 {
@@ -83,8 +86,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "a{42, 'foo'} - b{42, 'bar', ''}"
+	testName = `V: a{42, "foo"} - b{42, "bar", ""}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, b_{42, "foo", ""})
 	if len(errs) != 0 {
@@ -93,8 +97,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "a{42, 'foo'} - b{42, 'bar', 'AH'}"
+	testName = `F: a{42, "foo"} - b{42, "bar", "AH"}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(a{42, "foo"}, b_{42, "foo", "AH"})
 	if len(errs) == 0 {
@@ -103,8 +108,9 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 
-	testName = "c{a{}} - d{nil}"
+	testName = `V: c{a{}} - d{nil}`
 	t.Logf("Test %s", testName)
 	errs = compare.Compare(c{a{}}, d{nil})
 	if len(errs) != 0 {
@@ -113,4 +119,5 @@ func TestCompareStructs(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	t.Log("--------------------")
 }
