@@ -188,107 +188,123 @@ func getSimplifiedTypeStrict(kind reflect.Kind) SimplifiedType {
 	return SimplifiedType_None
 }
 
-func compareBools(v1, v2 reflect.Value, options compareOptions) []error {
-	// TODO implements options
+func compareBools(v1, v2 reflect.Value, options compareOptions) (errors []error) {
+	getter := func() (reflect.Value, bool, error) {
+		return v2, false, nil
+	}
 
-	if v1.Bool() != v2.Bool() {
-		return []error{fmt.Errorf("expected %v got %v", v1.Bool(), v2.Bool())}
+	response, errs := options.execOptions(valueGetters{
+		optionType_EQUAL: getter,
+	}, false)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if response.DoDefaultCheck {
+		if v1.Bool() != v2.Bool() {
+			return []error{fmt.Errorf("expected %v got %v", v1.Bool(), v2.Bool())}
+		}
 	}
 	return nil
 }
 
-func compareFloats(v1, v2 reflect.Value, options compareOptions) []error {
-	// TODO implements options
+func compareFloats(v1, v2 reflect.Value, options compareOptions) (errors []error) {
+	getter := func() (reflect.Value, bool, error) {
+		return v2, false, nil
+	}
 
-	if v1.Float() != v2.Float() {
-		return []error{fmt.Errorf("expected %f got %f", v1.Float(), v2.Float())}
+	response, errs := options.execOptions(valueGetters{
+		optionType_EQUAL: getter,
+	}, false)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if response.DoDefaultCheck {
+		if v1.Float() != v2.Float() {
+			return []error{fmt.Errorf("expected %f got %f", v1.Float(), v2.Float())}
+		}
 	}
 	return nil
 }
 
-func compareInts(v1, v2 reflect.Value, options compareOptions) []error {
-	// TODO implements options
+func compareInts(v1, v2 reflect.Value, options compareOptions) (errors []error) {
+	getter := func() (reflect.Value, bool, error) {
+		return v2, false, nil
+	}
 
-	k1 := getSimplifiedTypeStrict(v1.Kind())
-	k2 := getSimplifiedTypeStrict(v2.Kind())
-	switch k1 {
-	case SimplifiedType_Int:
-		switch k2 {
+	response, errs := options.execOptions(valueGetters{
+		optionType_EQUAL: getter,
+	}, false)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if response.DoDefaultCheck {
+		k1 := getSimplifiedTypeStrict(v1.Kind())
+		k2 := getSimplifiedTypeStrict(v2.Kind())
+		switch k1 {
 		case SimplifiedType_Int:
-			if v1.Int() != v2.Int() {
-				return []error{fmt.Errorf("expected %d got %d", v1.Int(), v2.Int())}
+			switch k2 {
+			case SimplifiedType_Int:
+				if v1.Int() != v2.Int() {
+					return []error{fmt.Errorf("expected %d got %d", v1.Int(), v2.Int())}
+				}
+			case SimplifiedType_Uint:
+				v1_ := v1.Int()
+				if v1_ < 0 || uint64(v1_) != v2.Uint() {
+					return []error{fmt.Errorf("expected %d got %d", v1.Int(), v2.Uint())}
+				}
 			}
 		case SimplifiedType_Uint:
-			v1_ := v1.Int()
-			if v1_ < 0 || uint64(v1_) != v2.Uint() {
-				return []error{fmt.Errorf("expected %d got %d", v1.Int(), v2.Uint())}
-			}
-		}
-	case SimplifiedType_Uint:
-		switch k2 {
-		case SimplifiedType_Int:
-			v2_ := v2.Int()
-			if v2_ < 0 || v1.Uint() != uint64(v2_) {
-				return []error{fmt.Errorf("expected %d got %d", v1.Uint(), v2.Int())}
-			}
-		case SimplifiedType_Uint:
-			if v1.Uint() != v2.Uint() {
-				return []error{fmt.Errorf("expected %d got %d", v1.Uint(), v2.Uint())}
-			}
-		}
-	}
-	return nil
-}
-
-func compareComplexs(v1, v2 reflect.Value, options compareOptions) []error {
-	if v1.Complex() != v2.Complex() {
-		return []error{fmt.Errorf("expected %f+%fi got %f+%fi", real(v1.Complex()), imag(v1.Complex()), real(v2.Complex()), imag(v2.Complex()))}
-	}
-	return nil
-}
-
-func compareStrings(v1, v2 reflect.Value, options compareOptions) (errs []error) {
-	opts := options.filterOptions()
-	currentOpts, ok := opts[""]
-
-	// TODO do this check in a global function
-	if len(opts) > 1 || (len(opts) == 1 && !ok) {
-		for k, opt := range opts {
-			if k == "" {
-				continue
-			}
-			for _, field := range opt {
-				errs = append(errs, fmt.Errorf("%s: does not exist", optionErrorMsg(field.id, field.completeField)))
-			}
-		}
-	}
-
-	doDefaultCheck := true
-	if ok && len(currentOpts) > 0 {
-		a := currentOpts.sortOptions([]optionType{optionType_EQUAL, optionType_LEN})
-
-		if len(a[optionType_EQUAL]) > 0 {
-			doDefaultCheck = false
-			for _, opt := range a[optionType_EQUAL] {
-				errs_ := opt.f.(equalFunctor)(v2)
-				if len(errs_) > 0 {
-					errs = append(errs, errs_...)
+			switch k2 {
+			case SimplifiedType_Int:
+				v2_ := v2.Int()
+				if v2_ < 0 || v1.Uint() != uint64(v2_) {
+					return []error{fmt.Errorf("expected %d got %d", v1.Uint(), v2.Int())}
+				}
+			case SimplifiedType_Uint:
+				if v1.Uint() != v2.Uint() {
+					return []error{fmt.Errorf("expected %d got %d", v1.Uint(), v2.Uint())}
 				}
 			}
 		}
-		// if len(a[optionType_LEN]) > 0 {
-		// 	doDefaultCheck = false
-		// 	for _, opt := range a[optionType_LEN] {
-		// 		errs_ := opt.f.(lenFunctor)(v2)
-		// 		if len(errs) > 0 {
-		// 			errs = append(errs, errs_...)
-		// 		}
-		// 	}
-		// }
 	}
-	if doDefaultCheck {
+	return nil
+}
+
+func compareComplexs(v1, v2 reflect.Value, options compareOptions) (errors []error) {
+	getter := func() (reflect.Value, bool, error) {
+		return v2, false, nil
+	}
+
+	response, errs := options.execOptions(valueGetters{
+		optionType_EQUAL: getter,
+	}, false)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if response.DoDefaultCheck {
+		if v1.Complex() != v2.Complex() {
+			return []error{fmt.Errorf("expected %f+%fi got %f+%fi", real(v1.Complex()), imag(v1.Complex()), real(v2.Complex()), imag(v2.Complex()))}
+		}
+	}
+	return nil
+}
+
+func compareStrings(v1, v2 reflect.Value, options compareOptions) (errors []error) {
+	getter := func() (reflect.Value, bool, error) {
+		return v2, false, nil
+	}
+
+	response, errs := options.execOptions(valueGetters{
+		optionType_EQUAL:     getter,
+		optionType_LEN:       getter,
+		optionType_LEN_RANGE: getter,
+	}, false)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if response.DoDefaultCheck {
 		if v1.String() != v2.String() {
-			errs = append(errs, []error{fmt.Errorf("expected %q got %q", v1.String(), v2.String())}...)
+			errors = append(errors, []error{fmt.Errorf("expected %q got %q", v1.String(), v2.String())}...)
 		}
 	}
 	return

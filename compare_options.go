@@ -67,7 +67,7 @@ type compareOption struct {
 	field         string
 	completeField string
 	optionType    optionType
-	f             interface{}
+	f             optionFunctor
 }
 
 type compareOptions []compareOption
@@ -78,12 +78,23 @@ const (
 	optionType_ERROR optionType = iota
 	optionType_EQUAL
 	optionType_LEN
+	optionType_LEN_RANGE
 )
+
+type valueGetter func() (reflect.Value, bool, error)
+type valueGetters map[optionType]valueGetter
+
+type optionCheckResponse struct {
+	FilteredOptions map[string]compareOptions
+	DoDefaultCheck  bool
+}
+
+type optionFunctor func(reflect.Value) []error
 
 const fieldFormat = "^([a-zA-Z_][a-zA-Z0-9_]*\\.)*[a-zA-Z_][a-zA-Z0-9_]*$"
 
 func optionErrorMsg(id uint, field string) string {
-	return fmt.Sprintf("Option %d field `%s'", id, field)
+	return fmt.Sprintf("Option %d field %q", id, field)
 }
 
 // if this.tmpFields is empty, add an empty string
@@ -100,6 +111,9 @@ func (this compareOptions) checkFieldsFormation() (errors []error) {
 	}
 	var idxToRemove []int
 	for idx, field := range this {
+		if field.completeField == "" {
+			continue // empty field name is valid by default
+		}
 		matched, err := regexp.MatchString(fieldFormat, field.completeField)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("%s: invalid field format: %v", optionErrorMsg(field.id, field.completeField), err))
@@ -138,23 +152,45 @@ func (this compareOptions) filterOptions() map[string]compareOptions {
 	return m
 }
 
-func (this compareOptions) sortOptions(optionTypes []optionType) map[optionType]compareOptions {
-	m := make(map[optionType]compareOptions, len(optionTypes)+1)
+func (this compareOptions) execOptions(valueGetters valueGetters, hasChildren bool) (optionCheckResponse, []error) {
+	var errors []error
+	doDefaultCheck := true
 
-	m[optionType_ERROR] = compareOptions{}
-	for _, optionType := range optionTypes {
-		m[optionType] = compareOptions{}
-	}
+	filteredOptions := this.filterOptions()
 
-	for _, option := range this {
-		arr, ok := m[option.optionType]
-		if ok {
-			m[option.optionType] = append(arr, option)
-		} else {
-			m[optionType_ERROR] = append(m[optionType_ERROR], option)
+	if !hasChildren {
+		for k, option := range filteredOptions {
+			if k == "" {
+				continue
+			}
+			for _, field := range option {
+				errors = append(errors, fmt.Errorf("%s: does not exist", optionErrorMsg(field.id, field.completeField)))
+			}
 		}
 	}
-	return m
+
+	for _, option := range filteredOptions[""] {
+		getter, ok := valueGetters[option.optionType]
+		if ok {
+			value, doDefault, err := getter()
+			if err == nil {
+				doDefaultCheck = doDefaultCheck && doDefault
+				errs := option.f(value)
+				if len(errs) > 0 {
+					errors = append(errors, errs...)
+				}
+			} else {
+				errors = append(errors, err)
+				doDefaultCheck = false
+			}
+		} else {
+			errors = append(errors, fmt.Errorf("%s: unexpected option on this type", optionErrorMsg(option.id, option.completeField)))
+		}
+	}
+	return optionCheckResponse{
+		FilteredOptions: filteredOptions,
+		DoDefaultCheck:  doDefaultCheck,
+	}, errors
 }
 
 func (this CompareOptions) Field(fields ...string) CompareOptions {
@@ -163,27 +199,63 @@ func (this CompareOptions) Field(fields ...string) CompareOptions {
 	return this
 }
 
-type equalFunctor func(v1 reflect.Value) []error
-
 func (this CompareOptions) Equal(values ...interface{}) CompareOptions {
 	this.checkEmptyTmpFields()
 	for _, field := range this.tmpFields {
-		var f equalFunctor = func(v1 reflect.Value) []error {
-			for _, v2 := range values {
-				errs := Compare1(v1, v2)
-				if errs == nil {
-					return nil
-				}
-				fmt.Println(errs)
-			}
-			return []error{fmt.Errorf("%s: value does not match expected values", optionErrorMsg(this.optionId, field))}
-		}
 		this.options = append(this.options, compareOption{
 			id:            this.optionId,
 			field:         field,
 			completeField: field,
 			optionType:    optionType_EQUAL,
-			f:             f,
+			f: func(v1 reflect.Value) []error {
+				for _, v2 := range values {
+					errs := Compare1(v1, v2)
+					if errs == nil {
+						return nil
+					}
+				}
+				return []error{fmt.Errorf("%s: value does not match expected values", optionErrorMsg(this.optionId, field))}
+			},
+		})
+	}
+	return this
+}
+
+func (this CompareOptions) Len(len int) CompareOptions {
+	this.checkEmptyTmpFields()
+	for _, field := range this.tmpFields {
+		this.options = append(this.options, compareOption{
+			id:            this.optionId,
+			field:         field,
+			completeField: field,
+			optionType:    optionType_LEN,
+			f: func(v reflect.Value) []error {
+				l := v.Len()
+				if l != len {
+					return []error{fmt.Errorf("%s: value does not have the expected length (expected %d got %d)", optionErrorMsg(this.optionId, field), len, l)}
+				}
+				return nil
+			},
+		})
+	}
+	return this
+}
+
+func (this CompareOptions) LenRange(min, max int) CompareOptions {
+	this.checkEmptyTmpFields()
+	for _, field := range this.tmpFields {
+		this.options = append(this.options, compareOption{
+			id:            this.optionId,
+			field:         field,
+			completeField: field,
+			optionType:    optionType_LEN_RANGE,
+			f: func(v reflect.Value) []error {
+				l := v.Len()
+				if l < min || l > max {
+					return []error{fmt.Errorf("%s: value does not have the expected length (expected between %d and %d got %d)", optionErrorMsg(this.optionId, field), min, max, l)}
+				}
+				return nil
+			},
 		})
 	}
 	return this

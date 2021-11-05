@@ -1,0 +1,20 @@
+
+récupérer les options courantes (trouvées dans "")
+
+dans le cas ou il n'y a pas d'enfant:
+- générer des erreurs pour tous les autres options (trouvées dans autre que "")
+
+dans le cas où il y a des enfants:
+- chercher en prio les enfants qui ont des options puis générer une liste à ne pas check normalement.
+
+
+
+// filter all options by child
+opts := options.filterOptions()
+
+// all current options will be in ""
+currentOpts, ok := opts[""]
+
+// if there is no child, throw errors for all options except all in "" (and all Ignored ones)
+
+// for all options that are enabled => check them with a function that returns the value, and if the default-check will be done (and an error in case)
